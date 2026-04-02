@@ -1,0 +1,53 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from './lib/firebase'
+
+import Navbar from './components/Navbar'
+import ProtectedRoute from './components/ProtectedRoute'
+
+import Home from './pages/Home'
+import Membresia from './pages/Membresia'
+import Login from './pages/Login'
+
+import Dashboard from './pages/admin/Dashboard'
+import Turnos from './pages/admin/Turnos'
+import Servicios from './pages/admin/Servicios'
+import Disponibilidad from './pages/admin/Disponibilidad'
+import Membresias from './pages/admin/Membresias'
+
+export default function App() {
+  const [user, setUser] = useState(undefined) // undefined = cargando
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u))
+    return unsub
+  }, [])
+
+  if (user === undefined) {
+    return (
+      <div className="page-loader">
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  return (
+    <BrowserRouter>
+      <Navbar user={user} />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/membresia" element={<Membresia />} />
+        <Route path="/login" element={user ? <Navigate to="/admin" /> : <Login />} />
+
+        <Route path="/admin" element={<ProtectedRoute user={user}><Dashboard /></ProtectedRoute>} />
+        <Route path="/admin/turnos" element={<ProtectedRoute user={user}><Turnos /></ProtectedRoute>} />
+        <Route path="/admin/servicios" element={<ProtectedRoute user={user}><Servicios /></ProtectedRoute>} />
+        <Route path="/admin/disponibilidad" element={<ProtectedRoute user={user}><Disponibilidad /></ProtectedRoute>} />
+        <Route path="/admin/membresias" element={<ProtectedRoute user={user}><Membresias /></ProtectedRoute>} />
+
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
