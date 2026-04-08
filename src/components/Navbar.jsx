@@ -1,94 +1,89 @@
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../lib/firebase'
 import logo from '../assets/logo.jpg'
 
 export default function Navbar({ user }) {
+  const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const isAdmin = location.pathname.startsWith('/admin')
 
   async function handleLogout() {
     await signOut(auth)
+    setMenuOpen(false)
     navigate('/')
   }
 
+  function closeMenu() {
+    setMenuOpen(false)
+  }
+
   return (
-    <nav style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      background: 'var(--white)',
-      borderBottom: '1px solid var(--gray-200)',
-      padding: '0 32px',
-      height: '64px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    }}>
-      <Link to={user ? "/admin" : "/"} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <img
-          src={logo}
-          alt="StyloSpace"
-          style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }}
-        />
-        <span style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '22px',
-          fontWeight: 300,
-          letterSpacing: '0.05em',
-        }}>
-          StyloSpace
-        </span>
-      </Link>
+    <nav className="site-nav">
+      <div className="site-nav__inner">
+        <Link to={user ? '/admin' : '/'} className="site-nav__brand" onClick={closeMenu}>
+          <img src={logo} alt="StyloSpace" className="site-nav__logo" />
+          <span className="site-nav__title">StyloSpace</span>
+        </Link>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {!isAdmin && (
-          <>
-            <Link to="/" className="btn btn-ghost" style={{ fontSize: '13px' }}>
-              Reservar turno
-            </Link>
-            
-          </>
-        )}
+        <button
+          type="button"
+          className="site-nav__toggle"
+          aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(open => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
 
-        {isAdmin && (
-          <>
-            <NavLink to="/admin">Inicio</NavLink>
-            <NavLink to="/admin/turnos">Turnos</NavLink>
-            <NavLink to="/admin/servicios">Servicios</NavLink>
-            <NavLink to="/admin/disponibilidad">Disponibilidad</NavLink>
-          </>
-        )}
+        <div className={`site-nav__content ${menuOpen ? 'is-open' : ''}`}>
+          <div className="site-nav__links">
+            {!isAdmin && (
+              <Link to="/" className="btn btn-ghost site-nav__action-link" onClick={closeMenu}>
+                Reservar turno
+              </Link>
+            )}
 
-        {user ? (
-          <button onClick={handleLogout} className="btn btn-outline" style={{ marginLeft: '8px' }}>
-            Salir
-          </button>
-        ) : (
-          <Link to="/login" className="btn btn-outline" style={{ marginLeft: '8px', fontSize: '13px' }}>
-            Admin
-          </Link>
-        )}
+            {isAdmin && (
+              <>
+                <NavLink to="/admin" onClick={closeMenu}>Inicio</NavLink>
+                <NavLink to="/admin/turnos" onClick={closeMenu}>Turnos</NavLink>
+                <NavLink to="/admin/servicios" onClick={closeMenu}>Servicios</NavLink>
+                <NavLink to="/admin/disponibilidad" onClick={closeMenu}>Disponibilidad</NavLink>
+              </>
+            )}
+          </div>
+
+          <div className="site-nav__auth">
+            {user ? (
+              <button onClick={handleLogout} className="btn btn-outline site-nav__auth-button">
+                Salir
+              </button>
+            ) : (
+              <Link to="/login" className="btn btn-outline site-nav__auth-button" onClick={closeMenu}>
+                Admin
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
     </nav>
   )
 }
 
-function NavLink({ to, children }) {
+function NavLink({ to, children, onClick }) {
   const location = useLocation()
   const active = location.pathname === to
+
   return (
     <Link
       to={to}
-      style={{
-        fontSize: '13px',
-        padding: '6px 12px',
-        color: active ? 'var(--black)' : 'var(--gray-600)',
-        fontWeight: active ? 500 : 400,
-        borderBottom: active ? '1px solid var(--black)' : '1px solid transparent',
-        transition: 'var(--transition)',
-      }}
+      onClick={onClick}
+      className={`site-nav__link ${active ? 'is-active' : ''}`}
     >
       {children}
     </Link>

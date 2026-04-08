@@ -45,11 +45,7 @@ export default function Dashboard() {
 
     const confirmados = turnos
       .filter(t => t.estado === 'confirmed')
-      .sort((a, b) => {
-        const aKey = `${a.fecha} ${a.hora}`
-        const bKey = `${b.fecha} ${b.hora}`
-        return aKey.localeCompare(bKey)
-      })
+      .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`))
 
     const turnosHoy = confirmados.filter(t => t.fecha === hoy)
     const turnosManana = confirmados.filter(t => t.fecha === manana)
@@ -60,10 +56,7 @@ export default function Dashboard() {
     })
 
     const ahora = new Date()
-    const proximosTurnos = confirmados.filter(t => {
-      const dt = new Date(`${t.fecha}T${t.hora}:00`)
-      return dt >= ahora
-    })
+    const proximosTurnos = confirmados.filter(t => new Date(`${t.fecha}T${t.hora}:00`) >= ahora)
 
     return {
       turnosHoy,
@@ -79,18 +72,13 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px' }}>
-      <h1 style={{ fontSize: 36, marginBottom: 6 }}>Panel de administración</h1>
-      <p style={{ color: 'var(--gray-600)', marginBottom: 40 }}>Bienvenido a StyloSpace</p>
+    <div className="admin-page dashboard-page">
+      <header className="page-header">
+        <h1 className="page-title">Panel de administración</h1>
+        <p className="page-subtitle">Bienvenido a StyloSpace</p>
+      </header>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 16,
-          marginBottom: 48,
-        }}
-      >
+      <div className="stats-grid">
         <StatCard label="Turnos hoy" value={turnosHoy.length} link="/admin/turnos?vista=hoy" />
         <StatCard label="Turnos mañana" value={turnosManana.length} link="/admin/turnos?vista=manana" />
         <StatCard label="Próximos 7 días" value={turnosSemana.length} link="/admin/turnos?vista=semana" />
@@ -103,84 +91,43 @@ export default function Dashboard() {
         />
       </div>
 
-      <div style={{ marginBottom: 40 }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 16,
-            gap: 16,
-            flexWrap: 'wrap',
-          }}
-        >
-          <h2 style={{ fontSize: 24, margin: 0 }}>Próximos turnos</h2>
-          <Link to="/admin/turnos?vista=proximos" style={{ fontSize: 13, color: 'var(--gray-600)' }}>
+      <section className="dashboard-section">
+        <div className="section-head">
+          <h2 className="section-title section-title--sm">Próximos turnos</h2>
+          <Link to="/admin/turnos?vista=proximos" className="section-link">
             Ver todos →
           </Link>
         </div>
 
         {proximosTurnos.length === 0 ? (
-          <p style={{ color: 'var(--gray-400)', padding: '24px 0' }}>
-            No hay próximos turnos confirmados.
-          </p>
+          <p className="empty-state empty-state--left">No hay próximos turnos confirmados.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {proximosTurnos.map(t => (
-              <div
-                key={t.id}
-                className="card"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '110px 90px 1fr auto',
-                  alignItems: 'center',
-                  gap: 16,
-                  padding: '16px 20px',
-                }}
-              >
-                <div style={{ fontSize: 13, color: 'var(--gray-600)' }}>{formatFecha(t.fecha)}</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>{t.hora}</div>
-                <div>
-                  <div style={{ fontWeight: 500 }}>{t.nombre_cliente}</div>
-                  <div style={{ fontSize: 13, color: 'var(--gray-600)' }}>{t.servicio_nombre}</div>
+          <div className="appointment-list">
+            {proximosTurnos.map(turno => (
+              <div key={turno.id} className="card appointment-card">
+                <div className="appointment-card__date">{formatFecha(turno.fecha)}</div>
+                <div className="appointment-card__time">{turno.hora}</div>
+                <div className="appointment-card__info">
+                  <div className="appointment-card__name">{turno.nombre_cliente}</div>
+                  <div className="appointment-card__service">{turno.servicio_nombre}</div>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--gray-600)' }}>
-                  ${t.precio?.toLocaleString('es-AR')}
-                </div>
+                <div className="appointment-card__price">${turno.precio?.toLocaleString('es-AR')}</div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }
 
 function StatCard({ label, value, subvalue, link, highlight }) {
   return (
-    <Link to={link} style={{ textDecoration: 'none' }}>
-      <div
-        className="card"
-        style={{
-          borderColor: highlight ? 'var(--black)' : 'var(--gray-200)',
-          transition: 'border-color var(--transition)',
-          cursor: 'pointer',
-        }}
-      >
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: typeof value === 'number' ? 40 : 28,
-            fontWeight: 300,
-            lineHeight: 1,
-          }}
-        >
-          {value}
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--gray-600)', marginTop: 8 }}>{label}</div>
-        {subvalue && (
-          <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>{subvalue}</div>
-        )}
+    <Link to={link} className="stat-card-link">
+      <div className={`card stat-card ${highlight ? 'is-highlighted' : ''}`}>
+        <div className={`stat-card__value ${typeof value !== 'number' ? 'is-text' : ''}`}>{value}</div>
+        <div className="stat-card__label">{label}</div>
+        {subvalue && <div className="stat-card__subvalue">{subvalue}</div>}
       </div>
     </Link>
   )

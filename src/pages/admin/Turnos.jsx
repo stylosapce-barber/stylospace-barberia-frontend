@@ -58,11 +58,11 @@ export default function Turnos() {
     setCancelando(id)
     try {
       await cancelarTurno(id)
-      setTurnos(ts =>
-        ts.map(t => (t.id === id ? { ...t, estado: 'cancelled' } : t))
-      )
+      setTurnos(actuales => actuales.map(turno => (
+        turno.id === id ? { ...turno, estado: 'cancelled' } : turno
+      )))
     } catch (err) {
-      alert('Error al cancelar: ' + err.message)
+      alert(`Error al cancelar: ${err.message}`)
     } finally {
       setCancelando(null)
     }
@@ -81,11 +81,9 @@ export default function Turnos() {
     let filtrados = [...turnos]
 
     if (vista === 'hoy') {
-      const hoy = toDateOnly(hoyDate)
-      filtrados = filtrados.filter(t => t.fecha === hoy)
+      filtrados = filtrados.filter(t => t.fecha === toDateOnly(hoyDate))
     } else if (vista === 'manana') {
-      const manana = toDateOnly(mananaDate)
-      filtrados = filtrados.filter(t => t.fecha === manana)
+      filtrados = filtrados.filter(t => t.fecha === toDateOnly(mananaDate))
     } else if (vista === 'semana') {
       filtrados = filtrados.filter(t => {
         const fechaTurno = new Date(`${t.fecha}T00:00:00`)
@@ -93,16 +91,10 @@ export default function Turnos() {
       })
     } else if (vista === 'proximos') {
       const ahora = new Date()
-      filtrados = filtrados.filter(t => {
-        const dt = new Date(`${t.fecha}T${t.hora}:00`)
-        return dt >= ahora
-      })
+      filtrados = filtrados.filter(t => new Date(`${t.fecha}T${t.hora}:00`) >= ahora)
     } else if (vista === 'pasados') {
       const ahora = new Date()
-      filtrados = filtrados.filter(t => {
-        const dt = new Date(`${t.fecha}T${t.hora}:00`)
-        return dt < ahora
-      })
+      filtrados = filtrados.filter(t => new Date(`${t.fecha}T${t.hora}:00`) < ahora)
     } else if (vista === 'fecha') {
       filtrados = filtrados.filter(t => t.fecha === fecha)
     }
@@ -113,48 +105,23 @@ export default function Turnos() {
       filtrados = filtrados.filter(t => t.estado === 'cancelled')
     }
 
-    if(vista === 'pasados'){
-      return filtrados.sort((a, b) => {
-      const aKey = `${a.fecha} ${a.hora}`
-      const bKey = `${b.fecha} ${b.hora}`
-      return aKey.localeCompare(bKey)
-    }).toReversed()
-    }
-    return filtrados.sort((a, b) => {
-      const aKey = `${a.fecha} ${a.hora}`
-      const bKey = `${b.fecha} ${b.hora}`
-      return aKey.localeCompare(bKey)
-    })
+    const ordenados = filtrados.sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`))
+    return vista === 'pasados' ? ordenados.toReversed() : ordenados
   }, [turnos, vista, fecha, estadoFiltro])
 
   const confirmados = turnosFiltrados.filter(t => t.estado === 'confirmed')
   const cancelados = turnosFiltrados.filter(t => t.estado === 'cancelled')
 
-  function activarVista(nuevaVista) {
-    setVista(nuevaVista)
-  }
-
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 20,
-          flexWrap: 'wrap',
-          marginBottom: 32,
-        }}
-      >
+    <div className="admin-page">
+      <div className="page-header page-header--split">
         <div>
-          <h1 style={{ fontSize: 36, marginBottom: 6 }}>Turnos</h1>
-          <p style={{ color: 'var(--gray-600)' }}>
-            {confirmados.length} confirmados · {cancelados.length} cancelados
-          </p>
+          <h1 className="page-title">Turnos</h1>
+          <p className="page-subtitle">{confirmados.length} confirmados · {cancelados.length} cancelados</p>
         </div>
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div className="form-group" style={{ minWidth: 220 }}>
+        <div className="filters-grid filters-grid--turnos">
+          <div className="form-group">
             <label className="label">Fecha específica</label>
             <input
               type="date"
@@ -167,13 +134,9 @@ export default function Turnos() {
             />
           </div>
 
-          <div className="form-group" style={{ minWidth: 180 }}>
+          <div className="form-group">
             <label className="label">Estado</label>
-            <select
-              className="input"
-              value={estadoFiltro}
-              onChange={e => setEstadoFiltro(e.target.value)}
-            >
+            <select className="input" value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
               <option value="todos">Todos</option>
               <option value="confirmed">Confirmados</option>
               <option value="cancelled">Cancelados</option>
@@ -182,113 +145,61 @@ export default function Turnos() {
         </div>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          gap: 10,
-          flexWrap: 'wrap',
-          marginBottom: 24,
-        }}
-      >
-        <button
-          className={`btn ${vista === 'hoy' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => activarVista('hoy')}
-          type="button"
-        >
-          Hoy
-        </button>
-
-        <button
-          className={`btn ${vista === 'manana' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => activarVista('manana')}
-          type="button"
-        >
-          Mañana
-        </button>
-
-        <button
-          className={`btn ${vista === 'semana' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => activarVista('semana')}
-          type="button"
-        >
-          Próximos 7 días
-        </button>
-
-        <button
-          className={`btn ${vista === 'proximos' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => activarVista('proximos')}
-          type="button"
-        >
-          Próximos
-        </button>
-
-        <button
-          className={`btn ${vista === 'pasados' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => activarVista('pasados')}
-          type="button"
-        >
-          Pasados
-        </button>
+      <div className="filter-pills">
+        {[
+          ['hoy', 'Hoy'],
+          ['manana', 'Mañana'],
+          ['semana', 'Próximos 7 días'],
+          ['proximos', 'Próximos'],
+          ['pasados', 'Pasados'],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            className={`btn ${vista === key ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setVista(key)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      {vista === 'fecha' && (
-        <p style={{ color: 'var(--gray-600)', marginBottom: 20 }}>
-          Mostrando turnos del {formatFecha(fecha)}.
-        </p>
-      )}
+      {vista === 'fecha' && <p className="page-note">Mostrando turnos del {formatFecha(fecha)}.</p>}
 
       {loading ? (
         <div className="page-loader"><div className="spinner" /></div>
       ) : turnosFiltrados.length === 0 ? (
-        <p style={{ color: 'var(--gray-400)', padding: '32px 0', textAlign: 'center' }}>
-          No hay turnos para esta vista.
-        </p>
+        <p className="empty-state">No hay turnos para esta vista.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {turnosFiltrados.map(t => (
+        <div className="appointment-list">
+          {turnosFiltrados.map(turno => (
             <div
-              key={t.id}
-              className="card"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '120px 90px 1fr auto auto',
-                alignItems: 'center',
-                gap: 20,
-                padding: '16px 20px',
-                opacity: t.estado === 'cancelled' ? 0.5 : 1,
-              }}
+              key={turno.id}
+              className={`card booking-admin-card ${turno.estado === 'cancelled' ? 'is-cancelled' : ''}`}
             >
-              <div style={{ fontSize: 13, color: 'var(--gray-600)' }}>
-                {formatFecha(t.fecha)}
+              <div className="booking-admin-card__date">{formatFecha(turno.fecha)}</div>
+              <div className="booking-admin-card__time">{turno.hora}</div>
+
+              <div className="booking-admin-card__info">
+                <div className="booking-admin-card__name">{turno.nombre_cliente}</div>
+                <div className="booking-admin-card__meta">{turno.servicio_nombre} · {turno.contacto}</div>
+                <div className="booking-admin-card__email">{turno.email}</div>
               </div>
 
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 300 }}>
-                {t.hora}
+              <div className="booking-admin-card__status">
+                <div className="booking-admin-card__price">${turno.precio?.toLocaleString('es-AR')}</div>
+                <span className={`badge badge-${turno.estado}`}>
+                  {turno.estado === 'cancelled' ? 'cancelado' : vista === 'pasados' ? 'Realizado' : 'confirmado'}
+                </span>
               </div>
 
-              <div>
-                <div style={{ fontWeight: 500 }}>{t.nombre_cliente}</div>
-                <div style={{ fontSize: 13, color: 'var(--gray-600)' }}>
-                  {t.servicio_nombre} · {t.contacto}
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--gray-400)' }}>{t.email}</div>
-              </div>
-
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 500 }}>${t.precio?.toLocaleString('es-AR')}</div>
-                <span className={`badge badge-${t.estado}`}>{t.estado === "cancelled" ? "cancelado" : ( vista === "pasados" ? "Realizado" : "confirmado")}</span>
-              </div>
-
-              {t.estado === 'confirmed' && vista != "pasados" && (
+              {turno.estado === 'confirmed' && vista !== 'pasados' && (
                 <button
-                  className="btn btn-danger"
-                  style={{ whiteSpace: 'nowrap', padding: '8px 14px', fontSize: 12 }}
-                  disabled={cancelando === t.id}
-                  onClick={() => handleCancelar(t.id)}
+                  className="btn btn-danger booking-admin-card__action"
+                  disabled={cancelando === turno.id}
+                  onClick={() => handleCancelar(turno.id)}
                 >
-                  {cancelando === t.id
-                    ? <span className="spinner" style={{ width: 14, height: 14 }} />
-                    : 'Cancelar'}
+                  {cancelando === turno.id ? <span className="spinner spinner-sm" /> : 'Cancelar'}
                 </button>
               )}
             </div>
