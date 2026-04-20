@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   getServiciosAdmin,
   crearServicio,
@@ -25,6 +25,8 @@ export default function Servicios() {
   const [error, setError] = useState('')
   const [subiendoImagen, setSubiendoImagen] = useState(false)
 
+  const formRef = useRef(null)
+
   useEffect(() => {
     getServiciosAdmin()
       .then(setServicios)
@@ -42,7 +44,13 @@ export default function Servicios() {
       activo: Boolean(servicio.activo),
     })
     setError('')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
   }
 
   function cancelEdit() {
@@ -81,9 +89,11 @@ export default function Servicios() {
 
       if (editId) {
         await editarServicio(editId, data)
-        setServicios(actuales => actuales.map(servicio => (
-          servicio.id === editId ? { ...servicio, ...data } : servicio
-        )))
+        setServicios(actuales =>
+          actuales.map(servicio =>
+            servicio.id === editId ? { ...servicio, ...data } : servicio
+          )
+        )
       } else {
         const res = await crearServicio(data)
         setServicios(actuales => [...actuales, { id: res.id, ...data }])
@@ -101,9 +111,11 @@ export default function Servicios() {
     if (!confirm('¿Desactivar este servicio?')) return
 
     await eliminarServicio(id)
-    setServicios(actuales => actuales.map(servicio => (
-      servicio.id === id ? { ...servicio, activo: false } : servicio
-    )))
+    setServicios(actuales =>
+      actuales.map(servicio =>
+        servicio.id === id ? { ...servicio, activo: false } : servicio
+      )
+    )
   }
 
   if (loading) {
@@ -163,8 +175,14 @@ export default function Servicios() {
           )}
         </section>
 
-        <section className="card service-form-card">
-          <h2 className="section-title section-title--sm">{editId ? 'Editar servicio' : 'Nuevo servicio'}</h2>
+        <section
+          ref={formRef}
+          className="card service-form-card"
+          id="form-servicios"
+        >
+          <h2 className="section-title section-title--sm">
+            {editId ? 'Editar servicio' : 'Nuevo servicio'}
+          </h2>
 
           <form onSubmit={handleSubmit} className="form-stack">
             <div className="form-group">

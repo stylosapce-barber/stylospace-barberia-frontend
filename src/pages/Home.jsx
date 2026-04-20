@@ -1,22 +1,41 @@
-import { useState, useEffect } from 'react'
-import { getServicios, getDisponibilidad, reservarTurno } from '../lib/api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { getServicios, getDisponibilidad, getDisponibilidadResumen, reservarTurno } from '../lib/api'
 
 const STEPS = ['Servicio', 'Turno', 'Datos', 'Confirmar']
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-
-function getProximosDias(n = 14) {
-  const dias = []
-  const hoy = new Date()
-  for (let i = 0; i < n; i++) {
-    const d = new Date(hoy)
-    d.setDate(hoy.getDate() + i)
-    dias.push(d)
-  }
-  return dias
-}
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const LIMITE_DIAS_RESERVA = 30
 
 function formatFecha(dateObj) {
-  return dateObj.toISOString().split('T')[0]
+  const year = dateObj.getFullYear()
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+  const day = String(dateObj.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function parseDateOnly(fecha) {
+  const [year, month, day] = fecha.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function addDays(baseDate, days) {
+  const next = new Date(baseDate)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+function getMonthMatrix(baseDate) {
+  const firstDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1)
+  const start = new Date(firstDay)
+  start.setDate(firstDay.getDate() - firstDay.getDay())
+
+  const days = []
+  for (let i = 0; i < 42; i++) {
+    const day = new Date(start)
+    day.setDate(start.getDate() + i)
+    days.push(day)
+  }
+  return days
 }
 
 function formatDuracion(minutos) {
@@ -25,34 +44,109 @@ function formatDuracion(minutos) {
   return `${horas > 0 ? `${horas} hs` : ''}${horas > 0 && resto > 0 ? ' ' : ''}${resto > 0 ? `${resto} min` : ''}`.trim()
 }
 
+function formatFechaLarga(fecha) {
+  return parseDateOnly(fecha).toLocaleDateString('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+}
+
+function isSameOrBeforeMonth(leftDate, rightDate) {
+  if (leftDate.getFullYear() !== rightDate.getFullYear()) {
+    return leftDate.getFullYear() < rightDate.getFullYear()
+  }
+  return leftDate.getMonth() <= rightDate.getMonth()
+}
+
+function isSameOrAfterMonth(leftDate, rightDate) {
+  if (leftDate.getFullYear() !== rightDate.getFullYear()) {
+    return leftDate.getFullYear() > rightDate.getFullYear()
+  }
+  return leftDate.getMonth() >= rightDate.getMonth()
+}
+
 export default function Home() {
   const [step, setStep] = useState(0)
   const [servicios, setServicios] = useState([])
   const [servicioSel, setServicioSel] = useState(null)
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+  const [calendarResumen, setCalendarResumen] = useState({})
   const [fechaSel, setFechaSel] = useState(null)
   const [slots, setSlots] = useState([])
   const [slotSel, setSlotSel] = useState(null)
+  const [loadingCalendar, setLoadingCalendar] = useState(false)
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [form, setForm] = useState({ nombre_cliente: '', email: '', contacto: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const resumenCacheRef = useRef({})
 
-  const dias = getProximosDias(21)
+  const today = useMemo(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  }, [])
+
+  const maxBookingDate = useMemo(() => addDays(today, LIMITE_DIAS_RESERVA), [today])
+  const minCalendarMonth = useMemo(() => new Date(today.getFullYear(), today.getMonth(), 1), [today])
+  const maxCalendarMonth = useMemo(() => new Date(maxBookingDate.getFullYear(), maxBookingDate.getMonth(), 1), [maxBookingDate])
+  const monthDays = useMemo(() => getMonthMatrix(calendarMonth), [calendarMonth])
 
   useEffect(() => {
     getServicios().then(setServicios).catch(console.error)
   }, [])
 
   useEffect(() => {
+    if (step !== 1) return
+
+    const desde = formatFecha(monthDays[0])
+    const hasta = formatFecha(monthDays[monthDays.length - 1])
+    const cacheKey = `${desde}_${hasta}`
+
+    if (resumenCacheRef.current[cacheKey]) {
+      setCalendarResumen(resumenCacheRef.current[cacheKey])
+      return
+    }
+
+    setLoadingCalendar(true)
+
+    getDisponibilidadResumen(desde, hasta)
+      .then(items => {
+        const map = Object.fromEntries(items.map(item => [item.fecha, item]))
+        resumenCacheRef.current[cacheKey] = map
+        setCalendarResumen(map)
+      })
+      .catch(err => {
+        console.error(err)
+        setCalendarResumen({})
+      })
+      .finally(() => setLoadingCalendar(false))
+  }, [monthDays, step])
+
+  useEffect(() => {
     if (!fechaSel) return
+
+    const fechaDate = parseDateOnly(fechaSel)
+    if (fechaDate < today || fechaDate > maxBookingDate) {
+      setSlots([])
+      setSlotSel(null)
+      return
+    }
+
     setLoadingSlots(true)
     setSlotSel(null)
     getDisponibilidad(fechaSel)
       .then(setSlots)
-      .catch(console.error)
+      .catch(err => {
+        console.error(err)
+        setSlots([])
+      })
       .finally(() => setLoadingSlots(false))
-  }, [fechaSel])
+  }, [fechaSel, maxBookingDate, today])
 
   async function handleReservar() {
     setError('')
@@ -79,7 +173,14 @@ export default function Home() {
     setServicioSel(null)
     setSlotSel(null)
     setFechaSel(null)
+    setSlots([])
     setForm({ nombre_cliente: '', email: '', contacto: '' })
+  }
+
+  function handleSelectDate(fecha) {
+    const selectedDate = parseDateOnly(fecha)
+    if (selectedDate < today || selectedDate > maxBookingDate) return
+    setFechaSel(fecha)
   }
 
   if (success) {
@@ -90,7 +191,7 @@ export default function Home() {
           <h2 className="booking-success__title">¡Turno confirmado!</h2>
           <p className="booking-success__text">
             Te enviamos un email de confirmación a <strong>{form.email}</strong>.
-            Te esperamos el <strong>{fechaSel}</strong> a las <strong>{slotSel?.hora_inicio}</strong>.
+            Te esperamos el <strong>{formatFechaLarga(fechaSel)}</strong> a las <strong>{slotSel?.hora_inicio}</strong>.
           </p>
           <button className="btn btn-outline" onClick={resetReserva}>
             Reservar otro turno
@@ -144,6 +245,10 @@ export default function Home() {
                     key={servicio.id}
                     onClick={() => {
                       setServicioSel(servicio)
+                      setFechaSel(null)
+                      setSlotSel(null)
+                      setSlots([])
+                      setCalendarMonth(minCalendarMonth)
                       setStep(1)
                     }}
                     className={`service-card ${selected ? 'is-selected' : ''}`}
@@ -172,49 +277,114 @@ export default function Home() {
 
         {step === 1 && (
           <div className="fade-in">
-            <h2 className="section-title">Elegí el día</h2>
-            <p className="section-subtitle">{servicioSel?.nombre} · {servicioSel?.duracion_min} min</p>
+            <h2 className="section-title">Elegí día y horario</h2>
+            <p className="section-subtitle">
+              {servicioSel?.nombre} · {servicioSel?.duracion_min} min · Podés reservar hasta {LIMITE_DIAS_RESERVA} días desde hoy
+            </p>
 
-            <div className="day-selector">
-              {dias.map(dia => {
-                const valor = formatFecha(dia)
-                const selected = fechaSel === valor
-
-                return (
+            <div className="booking-calendar-layout">
+              <div className="card booking-calendar-card">
+                <div className="booking-calendar__header">
                   <button
-                    key={valor}
-                    onClick={() => setFechaSel(valor)}
-                    className={`day-chip ${selected ? 'is-selected' : ''}`}
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={isSameOrAfterMonth(minCalendarMonth, calendarMonth)}
+                    onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
                   >
-                    <span className="day-chip__weekday">{DIAS[dia.getDay()]}</span>
-                    <span className="day-chip__day">{dia.getDate()}</span>
+                    ←
                   </button>
-                )
-              })}
-            </div>
 
-            {fechaSel && (
-              <>
-                <p className="label booking-slots__label">Horarios disponibles</p>
-                {loadingSlots ? (
+                  <div className="booking-calendar__title">
+                    {MESES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={isSameOrBeforeMonth(maxCalendarMonth, calendarMonth)}
+                    onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                  >
+                    →
+                  </button>
+                </div>
+
+                <div className="booking-calendar__weekdays">
+                  {DIAS.map(dia => <span key={dia}>{dia}</span>)}
+                </div>
+
+                {loadingCalendar ? (
                   <div className="booking-loader"><div className="spinner" /></div>
-                ) : slots.length === 0 ? (
-                  <p className="empty-state empty-state--soft">No hay turnos disponibles para este día.</p>
                 ) : (
-                  <div className="slot-grid">
-                    {slots.map(slot => (
-                      <button
-                        key={slot.id}
-                        onClick={() => setSlotSel(slot)}
-                        className={`slot-chip ${slotSel?.id === slot.id ? 'is-selected' : ''}`}
-                      >
-                        {slot.hora_inicio}
-                      </button>
-                    ))}
+                  <div className="booking-calendar__grid">
+                    {monthDays.map(dia => {
+                      const fecha = formatFecha(dia)
+                      const resumen = calendarResumen[fecha]
+                      const isSelected = fechaSel === fecha
+                      const isCurrentMonth = dia.getMonth() === calendarMonth.getMonth()
+                      const isPast = dia < today
+                      const isBeyondLimit = dia > maxBookingDate
+                      const isDisabled = isPast || isBeyondLimit
+                      const cantidad = Number(resumen?.cantidad ?? resumen?.disponibles ?? 0)
+                      const hasAvailability = cantidad > 0
+
+                      let meta = 'Consultá horarios'
+                      if (isPast) meta = 'Pasó'
+                      else if (isBeyondLimit) meta = 'Fuera de rango'
+                      else if (hasAvailability) meta = `${cantidad} horarios`
+
+                      return (
+                        <button
+                          key={fecha}
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => handleSelectDate(fecha)}
+                          className={[
+                            'calendar-day',
+                            isSelected ? 'is-selected' : '',
+                            !isCurrentMonth ? 'is-outside' : '',
+                            hasAvailability ? 'has-availability' : 'is-empty',
+                            isDisabled ? 'is-disabled' : '',
+                          ].filter(Boolean).join(' ')}
+                        >
+                          <span className="calendar-day__number">{dia.getDate()}</span>
+                          <span className="calendar-day__meta">{meta}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
-              </>
-            )}
+              </div>
+
+              <div className="card booking-times-card">
+                <div className="booking-times-card__header">
+                  <h3>Horarios</h3>
+                  <p>{fechaSel ? formatFechaLarga(fechaSel) : 'Elegí una fecha del calendario'}</p>
+                </div>
+
+                <div className="booking-times-card__body">
+                  {!fechaSel ? (
+                    <p className="empty-state empty-state--soft">Seleccioná un día para ver los horarios disponibles.</p>
+                  ) : loadingSlots ? (
+                    <div className="booking-loader"><div className="spinner" /></div>
+                  ) : slots.length === 0 ? (
+                    <p className="empty-state empty-state--soft">No hay turnos disponibles para este día.</p>
+                  ) : (
+                    <div className="slot-grid">
+                      {slots.map(slot => (
+                        <button
+                          key={slot.id}
+                          onClick={() => setSlotSel(slot)}
+                          className={`slot-chip ${slotSel?.id === slot.id ? 'is-selected' : ''}`}
+                        >
+                          <span className="slot-chip__time">{slot.hora_inicio}</span>
+                          <span className="slot-chip__label">Disponible</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
             <div className="action-row">
               <button className="btn btn-ghost" onClick={() => setStep(0)}>← Volver</button>
@@ -282,7 +452,7 @@ export default function Home() {
             <div className="card booking-summary-card">
               <Row label="Servicio" value={servicioSel?.nombre} />
               <hr className="divider" />
-              <Row label="Fecha" value={fechaSel} />
+              <Row label="Fecha" value={fechaSel ? formatFechaLarga(fechaSel) : ''} />
               <Row label="Horario" value={slotSel?.hora_inicio} />
               <hr className="divider" />
               <Row label="Nombre" value={form.nombre_cliente} />

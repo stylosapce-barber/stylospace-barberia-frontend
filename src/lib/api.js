@@ -67,6 +67,12 @@ export async function getDisponibilidad(fecha) {
   return res.json()
 }
 
+export async function getDisponibilidadResumen(desde, hasta) {
+  const res = await fetch(`${BASE}/disponibilidad/resumen?desde=${desde}&hasta=${hasta}`)
+  if (!res.ok) throw new Error('Error al obtener disponibilidad resumida')
+  return res.json()
+}
+
 export async function getDisponibilidadAdmin(fecha) {
   const res = await fetch(`${BASE}/disponibilidad/admin?fecha=${fecha}`, {
     headers: await authHeaders(),

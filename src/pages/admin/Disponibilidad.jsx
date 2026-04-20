@@ -52,7 +52,7 @@ export default function Disponibilidad() {
     setMsg('')
     try {
       const res = await crearRango({ ...rango, duracion_min: Number(rango.duracion_min) })
-      setMsg(`✓ Rango creado: ${res.slots_creados} slots generados`)
+      setMsg(`✓ Rango creado: slots generados`)
       setRango(EMPTY_RANGO)
     } catch (err) {
       setMsg(`Error: ${err.message}`)
