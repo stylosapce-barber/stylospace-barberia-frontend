@@ -16,9 +16,16 @@ export default function Footer() {
 
         <div className="footer-col">
           <p className="footer-col-title">Ubicación</p>
-          <p className="footer-col-text"><a target="_blank" href="https://maps.app.goo.gl/hh1Lj26j8GtJi1jd7" >Haydn 3175, William C. Morris</a><br />Buenos Aires, Argentina</p>
+          <p className="footer-col-text">
+            Haydn 3175, William C. Morris
+            <br />
+            <a class="btn-maps" target="_blank" href="https://maps.app.goo.gl/hh1Lj26j8GtJi1jd7">
+              ver en google maps →
+            </a>
+            <br />Buenos Aires, Argentina
+          </p>
         </div>
-          
+
         <div className="footer-col">
           <p className="footer-col-title">Horarios</p>
           <p className="footer-col-text footer-hours">Mar - Vie: 15:30 – 20:30</p>
@@ -29,11 +36,11 @@ export default function Footer() {
           <p className="footer-col-title">Reservas</p>
           <p className="footer-col-text">¿Querés sacar turno?</p>
           <button
-        className="btn btn-primary"
-        onClick={() => document.getElementById('reserva')?.scrollIntoView({ behavior: 'smooth' })}
-      >
-        Reservar turno
-      </button>
+            className="btn btn-primary"
+            onClick={() => document.getElementById('reserva')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            Reservar turno
+          </button>
         </div>
 
       </div>
