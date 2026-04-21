@@ -264,6 +264,11 @@ textarea { resize: vertical; }
   margin: 0 auto 32px;
 }
 
+.btn-maps{
+  text-decoration: underline;
+  color: black;
+}
+
 .booking-section,
 .admin-page {
   max-width: var(--container);
