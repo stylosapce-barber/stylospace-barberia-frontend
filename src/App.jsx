@@ -4,6 +4,8 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './lib/firebase'
 
 import Navbar from './components/Navbar'
+import Footer from './components/Footer'
+import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import Home from './pages/Home'
@@ -15,7 +17,7 @@ import Servicios from './pages/admin/Servicios'
 import Disponibilidad from './pages/admin/Disponibilidad'
 
 export default function App() {
-  const [user, setUser] = useState(undefined) // undefined = cargando
+  const [user, setUser] = useState(undefined)
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u))
@@ -32,6 +34,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Navbar user={user} />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -44,6 +47,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <Footer />
     </BrowserRouter>
   )
 }

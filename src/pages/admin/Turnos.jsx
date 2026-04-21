@@ -177,8 +177,7 @@ export default function Turnos() {
               key={turno.id}
               className={`card booking-admin-card ${turno.estado === 'cancelled' ? 'is-cancelled' : ''}`}
             >
-              <div className="booking-admin-card__date">{formatFecha(turno.fecha)}</div>
-              <div className="booking-admin-card__time">{turno.hora}</div>
+              <div className="booking-admin-card__date">{formatFecha(turno.fecha)} - {turno.hora}</div>
 
               <div className="booking-admin-card__info">
                 <div className="booking-admin-card__name">{turno.nombre_cliente}</div>

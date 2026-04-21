@@ -85,6 +85,8 @@ export default function Home() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const resumenCacheRef = useRef({})
+  const reservaRef = useRef(null)
+  const firstRenderRef = useRef(true)
 
   const today = useMemo(() => {
     const now = new Date()
@@ -99,6 +101,27 @@ export default function Home() {
   useEffect(() => {
     getServicios().then(setServicios).catch(console.error)
   }, [])
+
+  useEffect(() => {
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false
+      return
+    }
+
+    reservaRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }, [step])
+
+  useEffect(() => {
+  if (!success) return
+
+  reservaRef.current?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
+}, [success])
 
   useEffect(() => {
     if (step !== 1) return
@@ -183,299 +206,304 @@ export default function Home() {
     setFechaSel(fecha)
   }
 
-  if (success) {
-    return (
-      <div className="booking-success">
-        <div className="fade-in booking-success__content">
-          <div className="booking-success__icon">✂️</div>
-          <h2 className="booking-success__title">¡Turno confirmado!</h2>
-          <p className="booking-success__text">
-            Te enviamos un email de confirmación a <strong>{form.email}</strong>.
-            Te esperamos el <strong>{formatFechaLarga(fechaSel)}</strong> a las <strong>{slotSel?.hora_inicio}</strong>.
-          </p>
-          <button className="btn btn-outline" onClick={resetReserva}>
-            Reservar otro turno
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   return (
-    <div>
-      <section className="hero-section">
-        <p className="hero-section__eyebrow">Buenos Aires · Barbería</p>
-        <h1 className="hero-section__title">StyloSpace</h1>
-        <p className="hero-section__description">
-          Reservá tu turno en minutos. Sin llamadas, sin esperas.
-        </p>
-        <button
-          className="btn btn-primary"
-          onClick={() => document.getElementById('reserva')?.scrollIntoView({ behavior: 'smooth' })}
-        >
-          Reservar turno
-        </button>
-      </section>
+  <div>
+    <section className="hero-section">
+      <p className="hero-section__eyebrow">
+        <a target="_blank" href="https://maps.app.goo.gl/hh1Lj26j8GtJi1jd7">
+          Haydn 3175, William C. Morris
+        </a>
+        <br /> Buenos Aires · Barbería
+      </p>
+      <h1 className="hero-section__title">StyloSpace</h1>
+      <p className="hero-section__description">
+        Reservá tu turno en minutos. Sin llamadas, sin esperas.
+      </p>
+      <button
+        className="btn btn-primary"
+        onClick={() => document.getElementById('reserva')?.scrollIntoView({ behavior: 'smooth' })}
+      >
+        Reservar turno
+      </button>
+    </section>
 
-      <section id="reserva" className="booking-section">
-        <div className="booking-steps">
-          {STEPS.map((item, index) => (
-            <div key={item} className="booking-steps__item">
-              <div className={`booking-steps__dot ${index <= step ? 'is-completed' : ''}`}>
-                {index + 1}
-              </div>
-              <span className={`booking-steps__label ${index === step ? 'is-active' : ''}`}>
-                {item}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {step === 0 && (
-          <div className="fade-in">
-            <h2 className="section-title">Elegí tu servicio</h2>
-            <p className="section-subtitle">¿Qué te hacemos hoy?</p>
-
-            <div className="services-grid">
-              {servicios.map(servicio => {
-                const selected = servicioSel?.id === servicio.id
-
-                return (
-                  <button
-                    key={servicio.id}
-                    onClick={() => {
-                      setServicioSel(servicio)
-                      setFechaSel(null)
-                      setSlotSel(null)
-                      setSlots([])
-                      setCalendarMonth(minCalendarMonth)
-                      setStep(1)
-                    }}
-                    className={`service-card ${selected ? 'is-selected' : ''}`}
-                  >
-                    <div className="service-card__media">
-                      {servicio.imagen ? (
-                        <img src={servicio.imagen} alt={servicio.nombre} className="service-card__image" />
-                      ) : (
-                        <div className="service-card__placeholder">Sin imagen</div>
-                      )}
-                    </div>
-
-                    <div className="service-card__content">
-                      <div className="service-card__title">{servicio.nombre}</div>
-                      <div className="service-card__meta">
-                        {formatDuracion(servicio.duracion_min)} · {servicio.descripcion}
-                      </div>
-                      <div className="service-card__price">${servicio.precio.toLocaleString('es-AR')}</div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="fade-in">
-            <h2 className="section-title">Elegí día y horario</h2>
-            <p className="section-subtitle">
-              {servicioSel?.nombre} · {servicioSel?.duracion_min} min · Podés reservar hasta {LIMITE_DIAS_RESERVA} días desde hoy
+    <section id="reserva" ref={reservaRef} className="booking-section">
+      {success ? (
+        <div className="booking-success">
+          <div className="fade-in booking-success__content">
+            <div className="booking-success__icon">✂️</div>
+            <h2 className="booking-success__title">¡Turno confirmado!</h2>
+            <p className="booking-success__text">
+              Te enviamos un email de confirmación a <strong>{form.email}</strong>.
+              Te esperamos el <strong>{formatFechaLarga(fechaSel)}</strong> a las <strong>{slotSel?.hora_inicio}</strong>.
             </p>
-
-            <div className="booking-calendar-layout">
-              <div className="card booking-calendar-card">
-                <div className="booking-calendar__header">
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    disabled={isSameOrAfterMonth(minCalendarMonth, calendarMonth)}
-                    onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                  >
-                    ←
-                  </button>
-
-                  <div className="booking-calendar__title">
-                    {MESES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    disabled={isSameOrBeforeMonth(maxCalendarMonth, calendarMonth)}
-                    onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                  >
-                    →
-                  </button>
+            <button className="btn btn-outline" onClick={resetReserva}>
+              Reservar otro turno
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="booking-steps">
+            {STEPS.map((item, index) => (
+              <div key={item} className="booking-steps__item">
+                <div className={`booking-steps__dot ${index <= step ? 'is-completed' : ''}`}>
+                  {index + 1}
                 </div>
-
-                <div className="booking-calendar__weekdays">
-                  {DIAS.map(dia => <span key={dia}>{dia}</span>)}
-                </div>
-
-                {loadingCalendar ? (
-                  <div className="booking-loader"><div className="spinner" /></div>
-                ) : (
-                  <div className="booking-calendar__grid">
-                    {monthDays.map(dia => {
-                      const fecha = formatFecha(dia)
-                      const resumen = calendarResumen[fecha]
-                      const isSelected = fechaSel === fecha
-                      const isCurrentMonth = dia.getMonth() === calendarMonth.getMonth()
-                      const isPast = dia < today
-                      const isBeyondLimit = dia > maxBookingDate
-                      const isDisabled = isPast || isBeyondLimit
-                      const cantidad = Number(resumen?.cantidad ?? resumen?.disponibles ?? 0)
-                      const hasAvailability = cantidad > 0
-
-                      let meta = 'Consultá horarios'
-                      if (isPast) meta = 'Pasó'
-                      else if (isBeyondLimit) meta = 'Fuera de rango'
-                      else if (hasAvailability) meta = `${cantidad} horarios`
-
-                      return (
-                        <button
-                          key={fecha}
-                          type="button"
-                          disabled={isDisabled}
-                          onClick={() => handleSelectDate(fecha)}
-                          className={[
-                            'calendar-day',
-                            isSelected ? 'is-selected' : '',
-                            !isCurrentMonth ? 'is-outside' : '',
-                            hasAvailability ? 'has-availability' : 'is-empty',
-                            isDisabled ? 'is-disabled' : '',
-                          ].filter(Boolean).join(' ')}
-                        >
-                          <span className="calendar-day__number">{dia.getDate()}</span>
-                          <span className="calendar-day__meta">{meta}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
+                <span className={`booking-steps__label ${index === step ? 'is-active' : ''}`}>
+                  {item}
+                </span>
               </div>
+            ))}
+          </div>
 
-              <div className="card booking-times-card">
-                <div className="booking-times-card__header">
-                  <h3>Horarios</h3>
-                  <p>{fechaSel ? formatFechaLarga(fechaSel) : 'Elegí una fecha del calendario'}</p>
-                </div>
+          {step === 0 && (
+            <div className="fade-in">
+              <h2 className="section-title">Elegí tu servicio</h2>
+              <p className="section-subtitle">¿Qué te hacemos hoy?</p>
 
-                <div className="booking-times-card__body">
-                  {!fechaSel ? (
-                    <p className="empty-state empty-state--soft">Seleccioná un día para ver los horarios disponibles.</p>
-                  ) : loadingSlots ? (
+              <div className="services-grid">
+                {servicios.map(servicio => {
+                  const selected = servicioSel?.id === servicio.id
+
+                  return (
+                    <button
+                      key={servicio.id}
+                      onClick={() => {
+                        setServicioSel(servicio)
+                        setFechaSel(null)
+                        setSlotSel(null)
+                        setSlots([])
+                        setCalendarMonth(minCalendarMonth)
+                        setStep(1)
+                      }}
+                      className={`service-card ${selected ? 'is-selected' : ''}`}
+                    >
+                      <div className="service-card__media">
+                        {servicio.imagen ? (
+                          <img src={servicio.imagen} alt={servicio.nombre} className="service-card__image" />
+                        ) : (
+                          <div className="service-card__placeholder">Sin imagen</div>
+                        )}
+                      </div>
+
+                      <div className="service-card__content">
+                        <div className="service-card__title">{servicio.nombre}</div>
+                        <div className="service-card__meta">
+                          {formatDuracion(servicio.duracion_min)} · {servicio.descripcion}
+                        </div>
+                        <div className="service-card__price">${servicio.precio.toLocaleString('es-AR')}</div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="fade-in">
+              <h2 className="section-title">Elegí día y horario</h2>
+              <p className="section-subtitle">
+                {servicioSel?.nombre} · {servicioSel?.duracion_min} min · Podés reservar hasta {LIMITE_DIAS_RESERVA} días desde hoy
+              </p>
+
+              <div className="booking-calendar-layout">
+                <div className="card booking-calendar-card">
+                  <div className="booking-calendar__header">
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      disabled={isSameOrAfterMonth(minCalendarMonth, calendarMonth)}
+                      onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                    >
+                      ←
+                    </button>
+
+                    <div className="booking-calendar__title">
+                      {MESES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      disabled={isSameOrBeforeMonth(maxCalendarMonth, calendarMonth)}
+                      onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                    >
+                      →
+                    </button>
+                  </div>
+
+                  <div className="booking-calendar__weekdays">
+                    {DIAS.map(dia => <span key={dia}>{dia}</span>)}
+                  </div>
+
+                  {loadingCalendar ? (
                     <div className="booking-loader"><div className="spinner" /></div>
-                  ) : slots.length === 0 ? (
-                    <p className="empty-state empty-state--soft">No hay turnos disponibles para este día.</p>
                   ) : (
-                    <div className="slot-grid">
-                      {slots.map(slot => (
-                        <button
-                          key={slot.id}
-                          onClick={() => setSlotSel(slot)}
-                          className={`slot-chip ${slotSel?.id === slot.id ? 'is-selected' : ''}`}
-                        >
-                          <span className="slot-chip__time">{slot.hora_inicio}</span>
-                          <span className="slot-chip__label">Disponible</span>
-                        </button>
-                      ))}
+                    <div className="booking-calendar__grid">
+                      {monthDays.map(dia => {
+                        const fecha = formatFecha(dia)
+                        const resumen = calendarResumen[fecha]
+                        const isSelected = fechaSel === fecha
+                        const isCurrentMonth = dia.getMonth() === calendarMonth.getMonth()
+                        const isPast = dia < today
+                        const isBeyondLimit = dia > maxBookingDate
+                        const isDisabled = isPast || isBeyondLimit
+                        const cantidad = Number(resumen?.cantidad ?? resumen?.disponibles ?? 0)
+                        const hasAvailability = cantidad > 0
+
+                        let meta = 'Consultá horarios'
+                        if (isPast) meta = 'Pasó'
+                        else if (isBeyondLimit) meta = 'Fuera de rango'
+                        else if (hasAvailability) meta = `${cantidad} horarios`
+
+                        return (
+                          <button
+                            key={fecha}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => handleSelectDate(fecha)}
+                            className={[
+                              'calendar-day',
+                              isSelected ? 'is-selected' : '',
+                              !isCurrentMonth ? 'is-outside' : '',
+                              hasAvailability ? 'has-availability' : 'is-empty',
+                              isDisabled ? 'is-disabled' : '',
+                            ].filter(Boolean).join(' ')}
+                          >
+                            <span className="calendar-day__number">{dia.getDate()}</span>
+                            <span className="calendar-day__meta">{meta}</span>
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
+
+                <div className="card booking-times-card">
+                  <div className="booking-times-card__header">
+                    <h3>Horarios</h3>
+                    <p>{fechaSel ? formatFechaLarga(fechaSel) : 'Elegí una fecha del calendario'}</p>
+                  </div>
+
+                  <div className="booking-times-card__body">
+                    {!fechaSel ? (
+                      <p className="empty-state empty-state--soft">Seleccioná un día para ver los horarios disponibles.</p>
+                    ) : loadingSlots ? (
+                      <div className="booking-loader"><div className="spinner" /></div>
+                    ) : slots.length === 0 ? (
+                      <p className="empty-state empty-state--soft">No hay turnos disponibles para este día.</p>
+                    ) : (
+                      <div className="slot-grid">
+                        {slots.map(slot => (
+                          <button
+                            key={slot.id}
+                            onClick={() => setSlotSel(slot)}
+                            className={`slot-chip ${slotSel?.id === slot.id ? 'is-selected' : ''}`}
+                          >
+                            <span className="slot-chip__time">{slot.hora_inicio}</span>
+                            <span className="slot-chip__label">Disponible</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="action-row">
+                <button className="btn btn-ghost" onClick={() => setStep(0)}>← Volver</button>
+                <button className="btn btn-primary" disabled={!slotSel} onClick={() => setStep(2)}>
+                  Continuar →
+                </button>
               </div>
             </div>
+          )}
 
-            <div className="action-row">
-              <button className="btn btn-ghost" onClick={() => setStep(0)}>← Volver</button>
-              <button className="btn btn-primary" disabled={!slotSel} onClick={() => setStep(2)}>
-                Continuar →
-              </button>
-            </div>
-          </div>
-        )}
+          {step === 2 && (
+            <div className="fade-in">
+              <h2 className="section-title">Tus datos</h2>
+              <p className="section-subtitle">Para confirmar tu turno necesitamos tus datos.</p>
 
-        {step === 2 && (
-          <div className="fade-in">
-            <h2 className="section-title">Tus datos</h2>
-            <p className="section-subtitle">Para confirmar tu turno necesitamos tus datos.</p>
-
-            <div className="form-stack">
-              <div className="form-group">
-                <label className="label">Nombre completo</label>
-                <input
-                  className="input"
-                  placeholder="Juan Pérez"
-                  value={form.nombre_cliente}
-                  onChange={e => setForm(f => ({ ...f, nombre_cliente: e.target.value }))}
-                />
+              <div className="form-stack">
+                <div className="form-group">
+                  <label className="label">Nombre completo</label>
+                  <input
+                    className="input"
+                    placeholder="Juan Pérez"
+                    value={form.nombre_cliente}
+                    onChange={e => setForm(f => ({ ...f, nombre_cliente: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="label">Email</label>
+                  <input
+                    className="input"
+                    type="email"
+                    placeholder="juan@gmail.com"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="label">WhatsApp o Instagram</label>
+                  <input
+                    className="input"
+                    placeholder="1134567890 o @juanperez"
+                    value={form.contacto}
+                    onChange={e => setForm(f => ({ ...f, contacto: e.target.value }))}
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label className="label">Email</label>
-                <input
-                  className="input"
-                  type="email"
-                  placeholder="juan@gmail.com"
-                  value={form.email}
-                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label className="label">WhatsApp o Instagram</label>
-                <input
-                  className="input"
-                  placeholder="1134567890 o @juanperez"
-                  value={form.contacto}
-                  onChange={e => setForm(f => ({ ...f, contacto: e.target.value }))}
-                />
+
+              <div className="action-row action-row--spaced">
+                <button className="btn btn-ghost" onClick={() => setStep(1)}>← Volver</button>
+                <button
+                  className="btn btn-primary"
+                  disabled={!form.nombre_cliente || !form.email || !form.contacto}
+                  onClick={() => setStep(3)}
+                >
+                  Continuar →
+                </button>
               </div>
             </div>
+          )}
 
-            <div className="action-row action-row--spaced">
-              <button className="btn btn-ghost" onClick={() => setStep(1)}>← Volver</button>
-              <button
-                className="btn btn-primary"
-                disabled={!form.nombre_cliente || !form.email || !form.contacto}
-                onClick={() => setStep(3)}
-              >
-                Continuar →
-              </button>
+          {step === 3 && (
+            <div className="fade-in">
+              <h2 className="section-title">Confirmá tu turno</h2>
+              <p className="section-subtitle">Revisá los detalles antes de confirmar.</p>
+
+              <div className="card booking-summary-card">
+                <Row label="Servicio" value={servicioSel?.nombre} />
+                <hr className="divider" />
+                <Row label="Fecha" value={fechaSel ? formatFechaLarga(fechaSel) : ''} />
+                <Row label="Horario" value={slotSel?.hora_inicio} />
+                <hr className="divider" />
+                <Row label="Nombre" value={form.nombre_cliente} />
+                <Row label="Email" value={form.email} />
+                <Row label="Contacto" value={form.contacto} />
+                <hr className="divider" />
+                <Row label="Total" value={`$${servicioSel?.precio?.toLocaleString('es-AR')}`} big />
+              </div>
+
+              {error && <p className="error-msg booking-summary__error">{error}</p>}
+
+              <div className="action-row">
+                <button className="btn btn-ghost" onClick={() => setStep(2)}>← Volver</button>
+                <button className="btn btn-primary" onClick={handleReservar} disabled={loading}>
+                  {loading ? <span className="spinner spinner-sm" /> : 'Confirmar turno'}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="fade-in">
-            <h2 className="section-title">Confirmá tu turno</h2>
-            <p className="section-subtitle">Revisá los detalles antes de confirmar.</p>
-
-            <div className="card booking-summary-card">
-              <Row label="Servicio" value={servicioSel?.nombre} />
-              <hr className="divider" />
-              <Row label="Fecha" value={fechaSel ? formatFechaLarga(fechaSel) : ''} />
-              <Row label="Horario" value={slotSel?.hora_inicio} />
-              <hr className="divider" />
-              <Row label="Nombre" value={form.nombre_cliente} />
-              <Row label="Email" value={form.email} />
-              <Row label="Contacto" value={form.contacto} />
-              <hr className="divider" />
-              <Row label="Total" value={`$${servicioSel?.precio?.toLocaleString('es-AR')}`} big />
-            </div>
-
-            {error && <p className="error-msg booking-summary__error">{error}</p>}
-
-            <div className="action-row">
-              <button className="btn btn-ghost" onClick={() => setStep(2)}>← Volver</button>
-              <button className="btn btn-primary" onClick={handleReservar} disabled={loading}>
-                {loading ? <span className="spinner spinner-sm" /> : 'Confirmar turno'}
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-    </div>
-  )
-}
+          )}
+        </>
+      )}
+    </section>
+  </div>
+)}
 
 function Row({ label, value, big }) {
   return (

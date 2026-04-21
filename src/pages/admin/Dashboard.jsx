@@ -105,13 +105,12 @@ export default function Dashboard() {
           <div className="appointment-list">
             {proximosTurnos.map(turno => (
               <div key={turno.id} className="card appointment-card">
-                <div className="appointment-card__date">{formatFecha(turno.fecha)}</div>
-                <div className="appointment-card__time">{turno.hora}</div>
+                  <div className="appointment-card__date">{formatFecha(turno.fecha)} - {turno.hora}</div>
                 <div className="appointment-card__info">
                   <div className="appointment-card__name">{turno.nombre_cliente}</div>
                   <div className="appointment-card__service">{turno.servicio_nombre}</div>
                 </div>
-                <div className="appointment-card__price">${turno.precio?.toLocaleString('es-AR')}</div>
+                  <div className="appointment-card__price">${turno.precio?.toLocaleString('es-AR')}</div>
               </div>
             ))}
           </div>
